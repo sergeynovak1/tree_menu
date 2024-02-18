@@ -1,9 +1,11 @@
 from django.db import connection
+from django.http import Http404
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django import template
 
 register = template.Library()
+
 
 def fetch_menu_data(search_title):
     with connection.cursor() as cursor:
@@ -38,6 +40,7 @@ def fetch_menu_data(search_title):
         ''', [search_title])
         return cursor.fetchall()
 
+
 def render_submenu(children, menu_item):
     if menu_item in children:
         result = '<ul>'
@@ -50,12 +53,16 @@ def render_submenu(children, menu_item):
         return result
     return ''
 
+
 @register.simple_tag(takes_context=True)
 def draw_menu(context):
     request = context['request']
     search_title = request.path.strip('/')
 
     rows = fetch_menu_data(search_title)
+
+    if not rows:
+        raise Http404(f"MenuItem with the title {search_title} not found")
 
     main_thread = rows[0][0].split(' -> ')
     children = {}
